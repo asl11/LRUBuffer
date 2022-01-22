@@ -77,6 +77,7 @@ private:
 
 	void * get_bytes(MyDB_Page page);
 
+	MyDB_PageHandle getNewPage(bool isPinned, bool isAnon);
 
 };
 

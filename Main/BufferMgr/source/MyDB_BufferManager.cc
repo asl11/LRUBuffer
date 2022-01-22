@@ -8,6 +8,8 @@
 
 using namespace std;
 
+// Logic here may be a little bit wrong. Shouldn't we look it up in the lookup table first to see 
+// if the page object has already been created?
 MyDB_PageHandle MyDB_BufferManager :: getPage (MyDB_TablePtr, long) {
 	int freeIndex = get_free();
 	MyDB_Page newPage(freeIndex, false, false, pageCount);
@@ -20,8 +22,6 @@ MyDB_PageHandle MyDB_BufferManager :: getPage () {
 	MyDB_Page newPage(freeIndex, false, true, pageCount);	
 	allPages[pageCount] = newPage;
 	LRU.push_front(pageCount);
-
-
 }
 
 MyDB_PageHandle MyDB_BufferManager :: getPinnedPage (MyDB_TablePtr, long) {
@@ -29,8 +29,6 @@ MyDB_PageHandle MyDB_BufferManager :: getPinnedPage (MyDB_TablePtr, long) {
 	MyDB_Page newPage(freeIndex, true, false, pageCount);
 	allPages[pageCount] = newPage;
 	LRU.push_front(pageCount);
-
-
 }
 
 MyDB_PageHandle MyDB_BufferManager :: getPinnedPage () {
@@ -38,8 +36,13 @@ MyDB_PageHandle MyDB_BufferManager :: getPinnedPage () {
 	MyDB_Page newPage(freeIndex, true, true, pageCount);
 	allPages[pageCount] = newPage;
 	LRU.push_front(pageCount);
+}
 
-	
+MyDB_PageHandle MyDB_BufferManager :: getNewPage(bool isPinned, bool isAnon) {
+	int freeIndex = get_free();
+	MyDB_Page newPage(freeIndex, isPinned, isAnon, pageCount);
+	allPages[pageCount] = newPage;
+	LRU.push_front(pageCount);
 }
 
 void MyDB_BufferManager :: unpin (MyDB_PageHandle unpinMe) {
@@ -79,7 +82,10 @@ void* MyDB_BufferManager :: get_bytes(MyDB_Page page) {
 			}
 		}
 		LRU.erase(iter);
-		
+		LRU.push_front(pageId);
+
+	} else {
+		// Now in case where pageId was not in buffer, expected case
 
 	}
 
