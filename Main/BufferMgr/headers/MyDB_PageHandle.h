@@ -33,11 +33,13 @@ public:
 	// become unpinned.  
 	~MyDB_PageHandleBase ();
 
-	// FEEL FREE TO ADD ADDITIONAL PUBLIC METHODS
+	MyDB_PageHandleBase (MyDB_Page page);
 
 private:
 
-	// YOUR CODE HERE
+	
+	MyDB_Page page;
+
 };
 
 #endif

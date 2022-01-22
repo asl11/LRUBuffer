@@ -5,14 +5,14 @@
 #include "MyDB_PageHandle.h"
 #include "MyDB_Table.h"
 #include "MyDB_page.h"
+#include <utility>
+#include <unordered_map>
+#include <list>
 
 using namespace std;
 
 class MyDB_BufferManager {
 
-	size_t pageSize;
-	size_t numPages;
-	string tempFile;
 
 public:
 
@@ -45,11 +45,9 @@ public:
 	// 1) the size of each page is pageSize 
 	// 2) the number of pages managed by the buffer manager is numPages;
 	// 3) temporary pages are written to the file tempFile
-	MyDB_BufferManager (size_t pageSize, size_t numPages, string tempFile) {
-		pageSize = pageSize;
-		numPages = numPages;
-		tempFile = tempFile;
-	}
+	MyDB_BufferManager (size_t pageSize, size_t numPages, string tempFile);
+
+	
 	
 	// when the buffer manager is destroyed, all of the dirty pages need to be
 	// written back to disk, any necessary data needs to be written to the catalog,
@@ -60,7 +58,25 @@ public:
 
 private:
 
-	// YOUR STUFF HERE
+	size_t pageSize;
+	size_t numPages;
+	string tempFile;
+
+	void *Buffer;
+	unordered_map <pair<MyDB_TablePtr, long>, MyDB_Page> lookup;
+
+	// allPages is only pages that are currently in the buffer
+	unordered_map <int, MyDB_Page> allPages;
+	list <int> LRU;
+	bool *freePages;
+	bool isFull;
+	int pageCount;
+
+	// Gets the next free page index of the buffer, or evicts one if they're all full
+	int get_free();
+
+	void * get_bytes(MyDB_Page page);
+
 
 };
 
