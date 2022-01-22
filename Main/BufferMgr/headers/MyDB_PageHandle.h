@@ -33,12 +33,14 @@ public:
 	// become unpinned.  
 	~MyDB_PageHandleBase ();
 
-	MyDB_PageHandleBase (MyDB_Page page);
+	MyDB_PageHandleBase (int pageId);
+
+	int getPageId();
 
 private:
 
 	
-	MyDB_Page page;
+	int pageId;
 
 };
 

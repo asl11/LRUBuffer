@@ -62,12 +62,18 @@ private:
 	size_t numPages;
 	string tempFile;
 
+	// Buffer is the chunk of memory allocated for buffer storage. *Bytes should point an index * pageSize + Buffer 
 	void *Buffer;
-	unordered_map <pair<MyDB_TablePtr, long>, MyDB_Page> lookup;
 
-	// allPages is only pages that are currently in the buffer
+	// Lookup table contains a map of EVERY pair to pageId, since you need to lookup pageIds that may not be in the buffer
+	unordered_map <pair<MyDB_TablePtr, long>, int> lookup;
+
+	// Map of pageID to every page object
 	unordered_map <int, MyDB_Page> allPages;
+
+	// LRU is the only data structure of these three which has a max size of numPages
 	list <int> LRU;
+	
 	bool *freePages;
 	bool isFull;
 	int pageCount;
@@ -75,9 +81,14 @@ private:
 	// Gets the next free page index of the buffer, or evicts one if they're all full
 	int get_free();
 
-	void * get_bytes(MyDB_Page page);
+	// Internal helper method to get bytes. Needs to reload from disk to memory if page has been evicted
+	void * get_bytes(int pageId);
 
-	MyDB_PageHandle getNewPage(bool isPinned, bool isAnon);
+	// Creates a new page object and returns the handle base associated. 
+	MyDB_PageHandleBase getNewPage(bool isPinned, bool isAnon);
+
+	// Checks if a nonAnon page is in the lookup table, if not, creates new handle base
+	MyDB_PageHandle getHandleLookup(MyDB_TablePtr whichTable, long i, bool isPinned);
 
 };
 
