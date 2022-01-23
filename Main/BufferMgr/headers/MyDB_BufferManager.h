@@ -55,6 +55,7 @@ public:
 	~MyDB_BufferManager ();
 
 	// FEEL FREE TO ADD ADDITIONAL PUBLIC METHODS 
+	void markDirty(int pageId);
 
 private:
 
@@ -73,22 +74,31 @@ private:
 
 	// LRU is the only data structure of these three which has a max size of numPages
 	list <int> LRU;
+
+	//
+	list <int> freeTempfileIndex;
 	
 	bool *freePages;
 	bool isFull;
 	int pageCount;
+	int tempFileIndex;
+	int tempFd;
+	
 
 	// Gets the next free page index of the buffer, or evicts one if they're all full
-	int get_free();
+	int getFree();
 
 	// Internal helper method to get bytes. Needs to reload from disk to memory if page has been evicted
-	void * get_bytes(int pageId);
+	void * getBytes(int pageId);
 
 	// Creates a new page object and returns the handle base associated. 
 	MyDB_PageHandleBase getNewPage(bool isPinned, bool isAnon);
 
 	// Checks if a nonAnon page is in the lookup table, if not, creates new handle base
 	MyDB_PageHandle getHandleLookup(MyDB_TablePtr whichTable, long i, bool isPinned);
+
+	// Gets the next free index for temp file storage, adds one if none are available
+	int getFreeTempIndex();
 
 };
 

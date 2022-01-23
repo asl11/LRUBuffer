@@ -7,6 +7,8 @@
 #include <string>
 #include <iostream>
 #include <list>
+#include <fcntl.h>  
+#include <unistd.h>
 
 using namespace std;
 
@@ -29,16 +31,22 @@ MyDB_PageHandle MyDB_BufferManager :: getPinnedPage () {
 
 MyDB_PageHandleBase MyDB_BufferManager :: getNewPage(bool isPinned, bool isAnon) {
 	// Free page and creating new page object
-	int freeIndex = get_free();
-	MyDB_Page newPage(freeIndex, isPinned, isAnon, pageCount);
+	int freeIndex = getFree();
+	int freeTempIndex = -1;
 
-	// Add new page to data structures to keep track
-	allPages[pageCount] = newPage;
-	LRU.push_front(pageCount);
+	if (isAnon == true) {
+		freeTempIndex = getFreeTempIndex();
+	} 
+
+	MyDB_Page newPage(freeIndex, isPinned, isAnon, pageCount, freeTempIndex);
 
 	// Update page's refcount and turn it into a handlebase
 	newPage.addRef();
 	MyDB_PageHandleBase newHandleBase(pageCount);
+
+	// Add new page to data structures to keep track
+	allPages[pageCount] = newPage;
+	LRU.push_front(pageCount);
 
 	pageCount += 1;
 	return newHandleBase;
@@ -52,11 +60,25 @@ MyDB_PageHandle MyDB_BufferManager :: getHandleLookup(MyDB_TablePtr whichTable, 
 		MyDB_PageHandleBase handleBase = getNewPage(isPinned, false);
 		int pageId = handleBase.getPageId();
 		lookup[key] = pageId;
+		allPages[pageId].addRef();
+		allPages[pageId].setTableLoc(key);
+
+		// Read it from tableLoc into buffer
+		void* bufferLoc = Buffer + pageSize * allPages[pageId].getIndex();
+		string fileName = whichTable->getStorageLoc();
+		int fd = open(fileName.c_str(), O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
+		if (lseek(fd, index * pageSize, SEEK_SET) == -1) {
+			cout << "Failed to lseek \n";
+		}
+		if (read(fd, bufferLoc, pageSize) == -1) {
+			cout << "Failed to read \n";
+		}
+		close(fd);
+
 		return make_shared <MyDB_PageHandleBase> (handleBase);
 	} else {
 		int pageId = lookup[key];
-		MyDB_Page page = allPages[pageId];
-		page.addRef(); // Note, I could probably put this in constructor for handlebase if I added helper methods
+		allPages[pageId].addRef();
 
 		MyDB_PageHandleBase newHandleBase(pageId);
 		return make_shared <MyDB_PageHandleBase> (newHandleBase);
@@ -65,9 +87,13 @@ MyDB_PageHandle MyDB_BufferManager :: getHandleLookup(MyDB_TablePtr whichTable, 
 
 
 void MyDB_BufferManager :: unpin (MyDB_PageHandle unpinMe) {
+	int pageId = unpinMe->getPageId();
+	allPages[pageId].setPinned(false);
+	LRU.push_back(pageId);
+
 }
 
-int MyDB_BufferManager :: get_free () {
+int MyDB_BufferManager :: getFree () {
 
 	if (!isFull) {
 		for (int i = 0; i < numPages; i++) {
@@ -79,14 +105,74 @@ int MyDB_BufferManager :: get_free () {
 		isFull = true;
 	}
 
-	// TODO: Eviction logic only needs to update the LRU, not lookup/allpages
+	// In case where no free pages (nearly all cases after initial numPages pages)	
+
+	if (LRU.size() == 0) {
+		// ERROR case either was initialized with 0 free pages or all pinned
+		cout << "Don't know what to do - LRU is empty and called get_free \n";
+	}
+
+	int evictedId = LRU.back();
+	LRU.pop_back();
 	
+	int bufIndex = allPages[evictedId].getIndex();
+	void* bufferLoc = Buffer + bufIndex * pageSize;
+
+	// Anon case needs to write to the temp file
+	if (allPages[evictedId].getAnon()) {
+		// Write to the temp file at the page's given location
+
+		int tempFileIndex = allPages[evictedId].getTempFileIndex();
+		int fileWriteLoc = tempFileIndex * pageSize;
+		if (lseek(tempFd, fileWriteLoc, SEEK_SET) == -1) {
+			// Error case failed to lseek
+			cout << "Failed to lseek! \n";
+		}
+		if (write(tempFd, bufferLoc, pageSize) == -1) {
+			// Erro case failed to write to file
+			cout << "Failed to write to temp file! \n";
+		}
+		
+	} else if (allPages[evictedId].getDirty() == true){
+		pair <MyDB_TablePtr, long> location = allPages[evictedId].getTableLoc();
+		MyDB_TablePtr tablePtr = location.first;
+		long offset = location.second;
+		string fileName = tablePtr->getStorageLoc();
+		int fd = open(fileName.c_str(), O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
+		if (lseek(fd, offset * pageSize, SEEK_SET) == -1) {
+			cout << "Failed to lseek \n";
+		}
+		if (write(fd, bufferLoc, pageSize) == -1) {
+			cout << "Failed to write \n";
+		}
+		close(fd);
+	}
+	
+	// Clear the buffer at this index and return it for new page to use
+	memset(bufferLoc, 0, pageSize);
+	return bufIndex;
 
 }
 
-void* MyDB_BufferManager :: get_bytes(int pageId) {
+int MyDB_BufferManager :: getFreeTempIndex() {
+	if (freeTempfileIndex.size() == 0) {
+		int result = tempFileIndex;
+		tempFileIndex += 1;
+		return result;
+	} else {
+		int result = freeTempfileIndex.back();
+		freeTempfileIndex.pop_back();
+		return result;
+	}
+}
+
+void* MyDB_BufferManager :: getBytes(int pageId) {
 	
-	MyDB_Page page = allPages[pageId];
+	void* bufLoc = Buffer + pageSize * allPages[pageId].getIndex();
+	if (allPages[pageId].getPinned() == true) {
+		return bufLoc;
+	}
+
 	// update LRU object 
 	auto iter = LRU.begin();
 	for (; *iter != pageId && iter!= LRU.end(); iter++); 
@@ -94,19 +180,34 @@ void* MyDB_BufferManager :: get_bytes(int pageId) {
 		// page is in the LRU, update its position and return buffer index
 		LRU.erase(iter);
 		LRU.push_front(pageId);
-		return Buffer + pageSize * page.getIndex(); // Check this
-	} else {
-		int newIndex = get_free();
-		page.setIndex(newIndex);
+		return bufLoc;
+	} {
+		int newIndex = getFree();
+		allPages[pageId].setIndex(newIndex)
 		LRU.push_front(pageId);
 		
 		// TODO: Need to load content from disk into the new index of buffer.
+		if (allPages[pageId].getAnon() == true) {
+			int tempFileIndex = allPages[pageId].getTempFileIndex();
+			int fileWriteLoc = tempFileIndex * pageSize;
+			if (lseek(tempFd, fileWriteLoc, SEEK_SET) == -1) {
+				// Error case failed to lseek
+				cout << "Failed to lseek! \n";
+			}
+			if (read(tempFd, bufLoc, pageSize) == -1) {
+				// Erro case failed to write to file
+				cout << "Failed to write to temp file! \n";
+			}
+		} else {
+			
+		}
 
-		return Buffer + pageSize * page.getIndex(); // Check this
+		return bufLoc;
 	}
+}
 
-	
-
+void MyDB_BufferManager :: markDirty(int pageId) {
+	allPages[pageId].setDirty();
 }
 
 MyDB_BufferManager :: MyDB_BufferManager (size_t pageSize, size_t numPages, string tempFile) {
@@ -123,9 +224,17 @@ MyDB_BufferManager :: MyDB_BufferManager (size_t pageSize, size_t numPages, stri
 	isFull = false;
 
 	pageCount = 0;
+	tempFileIndex = 0;
+
+	tempFd = open(tempFile.c_str(), O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
+	if (tempFd == -1) {
+		// Error case for failed to open file
+		cout << "Failed to open file, probably going to crash";
+	}
 }
 
 MyDB_BufferManager :: ~MyDB_BufferManager () {
+	close(tempFd);
 }
 	
 #endif

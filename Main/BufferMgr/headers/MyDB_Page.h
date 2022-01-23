@@ -3,6 +3,7 @@
 
 #include "MyDB_PageHandle.h"
 #include "MyDB_Page.h"
+#include "MyDB_Table.h"
 
 using namespace std;
 
@@ -10,7 +11,7 @@ class MyDB_Page {
     
 public:
 
-    MyDB_Page(int index, bool isPinned, bool isAnon, int pageId);
+    MyDB_Page(int index, bool isPinned, bool isAnon, int pageId, int tempFileIndex);
 
     bool getPinned();
 
@@ -32,6 +33,16 @@ public:
 
     int getIndex();
 
+    int getTempFileIndex();
+
+    void setTableLoc(pair <MyDB_TablePtr, long> location);
+
+    pair <MyDB_TablePtr, long> getTableLoc();
+
+    void setDirty();
+
+    bool getDirty();
+
 
     
 private:
@@ -41,6 +52,9 @@ private:
     bool isAnon;
     int pageId;
     int refCount;
+    int tempFileIndex;
+    bool dirty;
+    pair <MyDB_TablePtr, long> tableLoc;
 
 };
 

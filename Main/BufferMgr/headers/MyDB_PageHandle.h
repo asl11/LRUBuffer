@@ -3,6 +3,7 @@
 #define PAGE_HANDLE_H
 
 #include <memory>
+#include "MyDB_BufferManager.h"
 
 // page handles are basically smart pointers
 using namespace std;
@@ -33,7 +34,7 @@ public:
 	// become unpinned.  
 	~MyDB_PageHandleBase ();
 
-	MyDB_PageHandleBase (int pageId);
+	MyDB_PageHandleBase (int pageId, MyDB_BufferManager* bufferMan);
 
 	int getPageId();
 
@@ -41,6 +42,8 @@ private:
 
 	
 	int pageId;
+
+	MyDB_BufferManager *bufferMan;
 
 };
 
