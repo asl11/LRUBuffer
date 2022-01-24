@@ -63,24 +63,15 @@ MyDB_PageHandle MyDB_BufferManager :: getHandleLookup(MyDB_TablePtr whichTable, 
 		allPages[pageId].addRef();
 		allPages[pageId].setTableLoc(key);
 
-		// Read it from tableLoc into buffer
-		void* bufferLoc = Buffer + pageSize * allPages[pageId].getIndex();
 		string fileName = whichTable->getStorageLoc();
-		int fd = open(fileName.c_str(), O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
-		if (lseek(fd, index * pageSize, SEEK_SET) == -1) {
-			cout << "Failed to lseek \n";
-		}
-		if (read(fd, bufferLoc, pageSize) == -1) {
-			cout << "Failed to read \n";
-		}
-		close(fd);
+		readFromFile(Buffer + allPages[pageId].getIndex() * pageSize, index, fileName);
 
 		return make_shared <MyDB_PageHandleBase> (handleBase);
 	} else {
 		int pageId = lookup[key];
 		allPages[pageId].addRef();
 
-		MyDB_PageHandleBase newHandleBase(pageId);
+		MyDB_PageHandleBase newHandleBase(pageId, ); // TODO : Fix constructors
 		return make_shared <MyDB_PageHandleBase> (newHandleBase);
 	}
 }
@@ -92,6 +83,7 @@ void MyDB_BufferManager :: unpin (MyDB_PageHandle unpinMe) {
 	LRU.push_back(pageId);
 
 }
+
 
 int MyDB_BufferManager :: getFree () {
 
@@ -181,29 +173,43 @@ void* MyDB_BufferManager :: getBytes(int pageId) {
 		LRU.erase(iter);
 		LRU.push_front(pageId);
 		return bufLoc;
-	} {
+	} else {
 		int newIndex = getFree();
-		allPages[pageId].setIndex(newIndex)
+		allPages[pageId].setIndex(newIndex);
 		LRU.push_front(pageId);
 		
 		// TODO: Need to load content from disk into the new index of buffer.
 		if (allPages[pageId].getAnon() == true) {
 			int tempFileIndex = allPages[pageId].getTempFileIndex();
-			int fileWriteLoc = tempFileIndex * pageSize;
-			if (lseek(tempFd, fileWriteLoc, SEEK_SET) == -1) {
-				// Error case failed to lseek
-				cout << "Failed to lseek! \n";
-			}
-			if (read(tempFd, bufLoc, pageSize) == -1) {
-				// Erro case failed to write to file
-				cout << "Failed to write to temp file! \n";
-			}
+			readFromFile(bufLoc, tempFileIndex);
 		} else {
-			
+			string fileName = allPages[pageId].getTableLoc().first->getStorageLoc();
+			int offset = (int) allPages[pageId].getTableLoc().second;
+			readFromFile(bufLoc, offset, fileName);
 		}
 
 		return bufLoc;
 	}
+}
+
+void MyDB_BufferManager :: readFromFile(void* bufferLoc, int offset, string fileName = "") {
+	// Read it from tableLoc into buffer
+		int fd;
+		if (fileName == "") {
+			fd = tempFd;
+		} else {
+			int fd = open(fileName.c_str(), O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
+		}
+		if (lseek(fd, offset * pageSize, SEEK_SET) == -1) {
+			cout << "Failed to lseek \n";
+		}
+		if (read(fd, bufferLoc, pageSize) == -1) {
+			cout << "Failed to read \n";
+		}
+
+		if (fileName == "") {
+			close(fd);
+		}
 }
 
 void MyDB_BufferManager :: markDirty(int pageId) {

@@ -8,6 +8,7 @@
 #include <utility>
 #include <unordered_map>
 #include <list>
+#include <string>
 
 using namespace std;
 
@@ -75,7 +76,6 @@ private:
 	// LRU is the only data structure of these three which has a max size of numPages
 	list <int> LRU;
 
-	//
 	list <int> freeTempfileIndex;
 	
 	bool *freePages;
@@ -99,6 +99,12 @@ private:
 
 	// Gets the next free index for temp file storage, adds one if none are available
 	int getFreeTempIndex();
+
+	// Helper method to read from a filename into the bufferlocation
+	void readFromFile(void* bufferLoc, int offset, string fileName);
+
+	// Helper method to write from bufferloc into the file
+	void writeToFile(void* bufferLoc, int offset, string fileName);
 
 };
 
