@@ -5,7 +5,7 @@
 #include <iostream>
 
 MyDB_Page :: MyDB_Page() {
-    cout << " ERROR : Tried to call default constructor";
+    cout << " ERROR : Tried to call default constructor\n";
 }
 
 MyDB_Page :: MyDB_Page(int index, bool isPinned, bool isAnon, int pageId, int tempFileIndex = -1) : index(index), 
@@ -46,12 +46,17 @@ int MyDB_Page :: getTempFileIndex() {
     return tempFileIndex;
 }
 
-pair <MyDB_TablePtr, long> MyDB_Page :: getTableLoc() {
-    return tableLoc;
+string MyDB_Page :: getTableFileName() {
+    return tableFileName;
 }
 
-void MyDB_Page :: setTableLoc(pair <MyDB_TablePtr, long> location) {
-    tableLoc = location;
+long MyDB_Page :: getTableIndex() {
+    return tableIndex;
+}
+
+void MyDB_Page :: setTableLoc(string fileName, long i) {
+    tableFileName = fileName;
+    tableIndex = i;
 }
 
 void MyDB_Page :: setDirty() {

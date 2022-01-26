@@ -2,9 +2,9 @@
 #ifndef PAGE_HANDLE_H
 #define PAGE_HANDLE_H
 
+class MyDB_BufferManager;
 
 #include <memory>
-#include "MyDB_BufferManager.h"
 
 // page handles are basically smart pointers
 using namespace std;

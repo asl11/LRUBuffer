@@ -4,6 +4,7 @@
 
 #include <memory>
 #include "MyDB_PageHandle.h"
+#include "MyDB_BufferManager.h"
 
 void *MyDB_PageHandleBase :: getBytes () {
 	return bufferMan->getBytes(pageId);

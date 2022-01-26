@@ -2,6 +2,7 @@
 #define PAGE_H
 
 #include "MyDB_Table.h"
+#include <string>
 
 using namespace std;
 
@@ -33,9 +34,11 @@ public:
 
     int getTempFileIndex();
 
-    void setTableLoc(pair <MyDB_TablePtr, long> location);
+    void setTableLoc(string tableFileName, long tableIndex);
 
-    pair <MyDB_TablePtr, long> getTableLoc();
+    long getTableIndex();
+
+    string getTableFileName();
 
     void setDirty();
 
@@ -52,7 +55,8 @@ private:
     int refCount;
     int tempFileIndex;
     bool dirty;
-    pair <MyDB_TablePtr, long> tableLoc;
+    long tableIndex;
+    string tableFileName;
 
 };
 

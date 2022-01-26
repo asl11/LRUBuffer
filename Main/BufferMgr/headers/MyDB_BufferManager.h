@@ -2,8 +2,14 @@
 #ifndef BUFFER_MGR_H
 #define BUFFER_MGR_H
 
+class MyDB_PageHandleBase;
+#include <memory>
+typedef std::shared_ptr <MyDB_PageHandleBase> MyDB_PageHandle;
+
 #include "MyDB_Table.h"
 #include "MyDB_Page.h"
+
+#include <cstring>
 #include <unordered_map>
 #include <list>
 #include <string>
