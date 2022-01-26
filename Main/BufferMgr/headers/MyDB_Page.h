@@ -1,8 +1,6 @@
 #ifndef PAGE_H
 #define PAGE_H
 
-#include "MyDB_PageHandle.h"
-#include "MyDB_Page.h"
 #include "MyDB_Table.h"
 
 using namespace std;

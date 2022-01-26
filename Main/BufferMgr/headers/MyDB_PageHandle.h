@@ -2,16 +2,15 @@
 #ifndef PAGE_HANDLE_H
 #define PAGE_HANDLE_H
 
-class MyDB_BufferManager; // defined in MyDB_BufferManager.h
 
 #include <memory>
 #include "MyDB_BufferManager.h"
 
 // page handles are basically smart pointers
 using namespace std;
+
 class MyDB_PageHandleBase;
 typedef shared_ptr <MyDB_PageHandleBase> MyDB_PageHandle;
-
 class MyDB_PageHandleBase {
 
 public:

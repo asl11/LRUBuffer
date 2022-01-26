@@ -2,7 +2,6 @@
 #ifndef BUFFER_MGR_H
 #define BUFFER_MGR_H
 
-#include "MyDB_PageHandle.h"
 #include "MyDB_Table.h"
 #include "MyDB_Page.h"
 #include <unordered_map>
@@ -74,7 +73,7 @@ private:
 	void *Buffer;
 
 	// TODO: change this. Lookup table contains a map of EVERY pair to pageId, since you need to lookup pageIds that may not be in the buffer
-	unordered_map <string, unordered_map <long, int>> lookup;
+	unordered_map <string, unordered_map <long, int> > lookup;
 
 	// Map of pageID to every page object
 	unordered_map <int, MyDB_Page> allPages;

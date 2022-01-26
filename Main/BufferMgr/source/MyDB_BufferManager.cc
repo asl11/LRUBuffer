@@ -1,10 +1,7 @@
-
 #ifndef BUFFER_MGR_C
 #define BUFFER_MGR_C
 
 #include "MyDB_BufferManager.h"
-#include "MyDB_PageHandle.h"
-#include "MyDB_Page.h"
 #include <string>
 #include <iostream>
 #include <list>
@@ -55,12 +52,12 @@ MyDB_PageHandleBase MyDB_BufferManager :: getNewPage(bool isPinned, bool isAnon)
 
 MyDB_PageHandle MyDB_BufferManager :: getHandleLookup(MyDB_TablePtr whichTable, long index, bool isPinned) {
 	// Check the lookup table for the offset + table. Lookup table will always contain a page if its been created before
-	pair<MyDB_TablePtr, long> key = pair <MyDB_TablePtr, long> (whichTable, index);
-	if (lookup.count(key) == 0) {
+	string fileName = whichTable->getStorageLoc();
+	if (lookup.count(fileName) == 0 && lookup[fileName].count(index) == 0) {
 		// not in look up table
 		MyDB_PageHandleBase handleBase = getNewPage(isPinned, false);
 		int pageId = handleBase.getPageId();
-		lookup[key] = pageId;
+		lookup[fileName][index] = pageId;
 		allPages[pageId].addRef();
 		allPages[pageId].setTableLoc(key);
 
@@ -69,7 +66,7 @@ MyDB_PageHandle MyDB_BufferManager :: getHandleLookup(MyDB_TablePtr whichTable, 
 
 		return make_shared <MyDB_PageHandleBase> (handleBase);
 	} else {
-		int pageId = lookup[key];
+		int pageId = lookup[fileName][index];
 		allPages[pageId].addRef();
 
 		MyDB_PageHandleBase newHandleBase(pageId, this);
