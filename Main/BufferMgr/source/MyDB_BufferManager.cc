@@ -3,6 +3,7 @@
 #define BUFFER_MGR_C
 
 #include "MyDB_BufferManager.h"
+#include "MyDB_PageHandle.h"
 #include "MyDB_Page.h"
 #include <string>
 #include <iostream>
@@ -42,7 +43,7 @@ MyDB_PageHandleBase MyDB_BufferManager :: getNewPage(bool isPinned, bool isAnon)
 
 	// Update page's refcount and turn it into a handlebase
 	newPage.addRef();
-	MyDB_PageHandleBase newHandleBase(pageCount);
+	MyDB_PageHandleBase newHandleBase(pageCount, this);
 
 	// Add new page to data structures to keep track
 	allPages[pageCount] = newPage;
@@ -71,7 +72,7 @@ MyDB_PageHandle MyDB_BufferManager :: getHandleLookup(MyDB_TablePtr whichTable, 
 		int pageId = lookup[key];
 		allPages[pageId].addRef();
 
-		MyDB_PageHandleBase newHandleBase(pageId, ); // TODO : Fix constructors
+		MyDB_PageHandleBase newHandleBase(pageId, this);
 		return make_shared <MyDB_PageHandleBase> (newHandleBase);
 	}
 }
@@ -139,6 +140,11 @@ int MyDB_BufferManager :: getFree () {
 		}
 		close(fd);
 	}
+
+	// Shouldn't need the first if check, since nonAnon pages should get kicked from LRU as soon as refCount is 0 
+	if (allPages[evictedId].getAnon() == false && allPages[evictedId].getRef() == 0) {
+		deletePage(evictedId);
+	}
 	
 	// Clear the buffer at this index and return it for new page to use
 	memset(bufferLoc, 0, pageSize);
@@ -178,7 +184,6 @@ void* MyDB_BufferManager :: getBytes(int pageId) {
 		allPages[pageId].setIndex(newIndex);
 		LRU.push_front(pageId);
 		
-		// TODO: Need to load content from disk into the new index of buffer.
 		if (allPages[pageId].getAnon() == true) {
 			int tempFileIndex = allPages[pageId].getTempFileIndex();
 			readFromFile(bufLoc, tempFileIndex);
@@ -207,13 +212,45 @@ void MyDB_BufferManager :: readFromFile(void* bufferLoc, int offset, string file
 			cout << "Failed to read \n";
 		}
 
-		if (fileName == "") {
+		if (fileName != "") {
 			close(fd);
 		}
 }
 
 void MyDB_BufferManager :: markDirty(int pageId) {
 	allPages[pageId].setDirty();
+}
+
+void MyDB_BufferManager :: freeHandleBase(int pageId) {
+	allPages[pageId].decRef();
+
+	int refCount = allPages[pageId].getRef();
+
+	// Kill conditions are : 0 refcount and anon, or 0 refcount + evicted and nonAnon
+	if (refCount == 0 && allPages[pageId].getAnon() == true) {
+		deletePage(pageId);
+	}
+}
+
+void MyDB_BufferManager :: deletePage(int pageId) {
+	
+	if (allPages[pageId].getAnon() == true) {
+		// Deleting an anonymous page
+
+		// Delete from LRU if inside
+		for (auto iter = LRU.begin(); iter!= LRU.end(); iter++) {
+			if (*iter == pageId) {
+				LRU.erase(iter);
+				break;
+			}
+		}
+
+		// Allow the free temp file index to be reused
+		freeTempfileIndex.push_front(allPages[pageId].getTempFileIndex());	
+	} 
+
+	// nonAnon pages only need their pageId erased from the allPages map
+	allPages.erase(pageId);
 }
 
 MyDB_BufferManager :: MyDB_BufferManager (size_t pageSize, size_t numPages, string tempFile) {

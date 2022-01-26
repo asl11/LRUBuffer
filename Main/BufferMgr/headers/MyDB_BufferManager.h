@@ -4,7 +4,7 @@
 
 #include "MyDB_PageHandle.h"
 #include "MyDB_Table.h"
-#include "MyDB_page.h"
+#include "MyDB_Page.h"
 #include <utility>
 #include <unordered_map>
 #include <list>
@@ -56,7 +56,14 @@ public:
 	~MyDB_BufferManager ();
 
 	// FEEL FREE TO ADD ADDITIONAL PUBLIC METHODS 
+	// Called by page handle when bytes are dirty
 	void markDirty(int pageId);
+
+	// Called by page handle destructor
+	void freeHandleBase(int pageId);
+
+	// Internal helper method to get bytes. Needs to reload from disk to memory if page has been evicted
+	void * getBytes(int pageId);
 
 private:
 
@@ -88,9 +95,6 @@ private:
 	// Gets the next free page index of the buffer, or evicts one if they're all full
 	int getFree();
 
-	// Internal helper method to get bytes. Needs to reload from disk to memory if page has been evicted
-	void * getBytes(int pageId);
-
 	// Creates a new page object and returns the handle base associated. 
 	MyDB_PageHandleBase getNewPage(bool isPinned, bool isAnon);
 
@@ -105,6 +109,11 @@ private:
 
 	// Helper method to write from bufferloc into the file
 	void writeToFile(void* bufferLoc, int offset, string fileName);
+
+	// Helper method to "kill" pages
+	void deletePage(int pageId);
+
+
 
 };
 

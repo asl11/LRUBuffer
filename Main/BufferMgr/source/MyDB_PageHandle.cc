@@ -8,7 +8,7 @@
 #include "MyDB_BufferManager.h"
 
 void *MyDB_PageHandleBase :: getBytes () {
-	return nullptr;
+	return bufferMan->getBytes(pageId);
 }
 
 void MyDB_PageHandleBase :: wroteBytes () {
@@ -17,6 +17,7 @@ void MyDB_PageHandleBase :: wroteBytes () {
 
 MyDB_PageHandleBase :: ~MyDB_PageHandleBase () {
 	// need to update the tempFileIndex if temp page is getting killed
+	bufferMan->freeHandleBase(pageId);
 }
 
 MyDB_PageHandleBase :: MyDB_PageHandleBase(int pageId, MyDB_BufferManager *bufferMan) {
