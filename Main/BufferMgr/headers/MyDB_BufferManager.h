@@ -21,8 +21,6 @@ class MyDB_BufferManager {
 
 public:
 
-	// THESE METHODS MUST APPEAR AND THE PROTOTYPES CANNOT CHANGE!
-
 	// gets the i^th page in the table whichTable... note that if the page
 	// is currently being used (that is, the page is current buffered) a handle 
 	// to that already-buffered page should be returned
@@ -52,14 +50,11 @@ public:
 	// 3) temporary pages are written to the file tempFile
 	MyDB_BufferManager (size_t pageSize, size_t numPages, string tempFile);
 
-	
-	
 	// when the buffer manager is destroyed, all of the dirty pages need to be
 	// written back to disk, any necessary data needs to be written to the catalog,
 	// and any temporary files need to be deleted
 	~MyDB_BufferManager ();
 
-	// FEEL FREE TO ADD ADDITIONAL PUBLIC METHODS 
 	// Called by page handle when bytes are dirty
 	void markDirty(int pageId);
 
@@ -78,7 +73,7 @@ private:
 	// Buffer is the chunk of memory allocated for buffer storage. *Bytes should point an index * pageSize + Buffer 
 	void *Buffer;
 
-	// TODO: change this. Lookup table contains a map of EVERY pair to pageId, since you need to lookup pageIds that may not be in the buffer
+	// Lookup table contains a map of EVERY filename to offset to pageId, since you need to lookup pageIds that may not be in the buffer
 	unordered_map <string, unordered_map <long, int> > lookup;
 
 	// Map of pageID to every page object
@@ -87,6 +82,8 @@ private:
 	// LRU is the only data structure of these three which has a max size of numPages
 	list <int> LRU;
 
+	// List of free temp file indeces. Used so that we don't have a continuously increasing temp file and instead mark offsets 
+	// in the temp file as free when the associated page is deleted. 
 	list <int> freeTempfileIndex;
 	
 	bool *freePages;

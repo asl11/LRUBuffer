@@ -95,6 +95,7 @@ void MyDB_BufferManager :: unpin (MyDB_PageHandle unpinMe) {
 
 
 int MyDB_BufferManager :: getFree () {
+	// Get free returns a free index in the buffer, most likely will evict a page and handle eviction logic
 
 	if (!isFull) {
 		for (int i = 0; i < numPages; i++) {
@@ -135,6 +136,7 @@ int MyDB_BufferManager :: getFree () {
 		}
 		
 	} else if (allPages[evictedId].getDirty() == true) {
+		// nonAnon page and dirty, so need to write to file 
 		long offset = allPages[evictedId].getTableIndex();
 		string fileName = allPages[evictedId].getTableFileName();
 		int fd = open(fileName.c_str(), O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
@@ -159,6 +161,7 @@ int MyDB_BufferManager :: getFree () {
 }
 
 int MyDB_BufferManager :: getFreeTempIndex() {
+	// Temp index logic handling for when temp pages get deleted
 	if (freeTempfileIndex.size() == 0) {
 		int result = tempFileIndex;
 		tempFileIndex += 1;
@@ -186,6 +189,7 @@ void* MyDB_BufferManager :: getBytes(int pageId) {
 		LRU.push_front(pageId);
 		return bufLoc;
 	} else {
+		// Page is not in index, need to get a free index (evict) and read from file into the new buffer location
 		int newIndex = getFree();
 		allPages[pageId].setIndex(newIndex);
 		LRU.push_front(pageId);
@@ -204,8 +208,9 @@ void* MyDB_BufferManager :: getBytes(int pageId) {
 }
 
 void MyDB_BufferManager :: readFromFile(void* bufferLoc, int offset, string fileName = "") {
-	// Read it from tableLoc into buffer
+	// Read it from fileName at offset into buffer
 		int fd;
+		// fileName will be "" if reading from the temp file into anon pages
 		if (fileName == "") {
 			fd = tempFd;
 		} else {
@@ -268,6 +273,7 @@ void MyDB_BufferManager :: deletePage(int pageId) {
 
 MyDB_BufferManager :: MyDB_BufferManager (size_t pageSize, size_t numPages, string tempFile) {
 
+	// Constructor initializes all internal fields
 	this->pageSize = pageSize;
 	this->numPages = numPages;
 	this->tempFile = tempFile;

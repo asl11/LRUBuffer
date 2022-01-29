@@ -14,9 +14,6 @@ typedef shared_ptr <MyDB_PageHandleBase> MyDB_PageHandle;
 class MyDB_PageHandleBase {
 
 public:
-
-	// THESE METHODS MUST BE IMPLEMENTED WITHOUT CHANGING THE DEFINITION
-
 	// access the raw bytes in this page... if the page is not currently
 	// in the buffer, then the contents of the page are loaded from 
 	// secondary storage. 
@@ -35,15 +32,18 @@ public:
 	// become unpinned.  
 	~MyDB_PageHandleBase ();
 
+	// Constructor takes instance of the buffer manager for deletion logic
 	MyDB_PageHandleBase (int pageId, MyDB_BufferManager* bufferMan);
 
+	// getter for PageID, handles only contain pageId, buffer manager has map of pageIds to page objects
 	int getPageId();
 
 private:
 
-	
+	// pageID field
 	int pageId;
 
+	// Buffer manager to call
 	MyDB_BufferManager *bufferMan;
 
 };
