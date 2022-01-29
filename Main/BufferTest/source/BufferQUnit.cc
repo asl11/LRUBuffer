@@ -103,17 +103,20 @@ int main () {
 		vector <MyDB_PageHandle> temp2;
 		myHandles = temp2;
 
+		cout << "=========SWITCH TO FINAL PART OF UNIT TEST 1 PINNED ANON==========\n";
 		// now get a pair of pages and write them
 		for (int i = 0; i < 100; i++) {
-			cout << "allocating pinned page\n";
+			cout << "allocating pinned page 1 \n";
 			MyDB_PageHandle oneHandle = myMgr.getPinnedPage ();
+			cout << "just got handle\n";
 			char *bytes = (char *) oneHandle->getBytes ();
 			writeNums (bytes, 64, i);
 			oneHandle->wroteBytes ();
-			cout << "allocating pinned page\n";
+			cout << "wrote page 1, allocating pinned page 2 \n";
 			MyDB_PageHandle twoHandle = myMgr.getPinnedPage ();
 			writeNums (bytes, 64, i);
 			twoHandle->wroteBytes ();
+			cout << "wrote page 2 \n";
 		}
 
 		// make a second table

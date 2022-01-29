@@ -100,10 +100,10 @@ private:
 	int getFree();
 
 	// Creates a new page object and returns the handle base associated. 
-	MyDB_PageHandleBase getNewPage(bool isPinned, bool isAnon);
+	int getNewPage(bool isPinned, bool isAnon);
 
 	// Checks if a nonAnon page is in the lookup table, if not, creates new handle base
-	MyDB_PageHandle getHandleLookup(MyDB_TablePtr whichTable, long i, bool isPinned);
+	int getHandleLookup(MyDB_TablePtr whichTable, long i, bool isPinned);
 
 	// Gets the next free index for temp file storage, adds one if none are available
 	int getFreeTempIndex();

@@ -14,22 +14,27 @@ using namespace std;
 
 
 MyDB_PageHandle MyDB_BufferManager :: getPage (MyDB_TablePtr table, long index) {
-	return getHandleLookup(table, index, false);
+	int pageId = getHandleLookup(table, index, false);
+	return make_shared <MyDB_PageHandleBase> (pageId, this);
 }
 
 MyDB_PageHandle MyDB_BufferManager :: getPage () {
-	return make_shared <MyDB_PageHandleBase> (getNewPage(false, true));
+	int pageId = getNewPage(false, true);
+	return make_shared <MyDB_PageHandleBase> (pageId, this);
 }
 
 MyDB_PageHandle MyDB_BufferManager :: getPinnedPage (MyDB_TablePtr table, long index) {
-	return getHandleLookup(table, index, true);
+	int pageId = getHandleLookup(table, index, true);
+	return make_shared <MyDB_PageHandleBase> (pageId, this);
+
 }
 
 MyDB_PageHandle MyDB_BufferManager :: getPinnedPage () {
-	return make_shared <MyDB_PageHandleBase> (getNewPage(true, true));
+	int pageId = getNewPage(true, true);
+	return make_shared <MyDB_PageHandleBase> (pageId, this);
 }
 
-MyDB_PageHandleBase MyDB_BufferManager :: getNewPage(bool isPinned, bool isAnon) {
+int MyDB_BufferManager :: getNewPage(bool isPinned, bool isAnon) {
 	// Free page and creating new page object
 	int freeIndex = getFree();
 	int freeTempIndex = -1;
@@ -42,38 +47,42 @@ MyDB_PageHandleBase MyDB_BufferManager :: getNewPage(bool isPinned, bool isAnon)
 
 	// Update page's refcount and turn it into a handlebase
 	newPage.addRef();
-	MyDB_PageHandleBase newHandleBase(pageCount, this);
 
 	// Add new page to data structures to keep track
 	allPages[pageCount] = newPage;
 	LRU.push_front(pageCount);
 
+	cout << "added pageID " << pageCount << " which was pinned: " << isPinned << " and Anon " << isAnon << ", double check anon: " << newPage.getAnon() << "\n";
+
+	int result = pageCount;
 	pageCount += 1;
-	return newHandleBase;
+	return result;
 }
 
-MyDB_PageHandle MyDB_BufferManager :: getHandleLookup(MyDB_TablePtr whichTable, long index, bool isPinned) {
+
+int MyDB_BufferManager :: getHandleLookup(MyDB_TablePtr whichTable, long index, bool isPinned) {
 	// Check the lookup table for the offset + table. Lookup table will always contain a page if its been created before
 	string fileName = whichTable->getStorageLoc();
-	if (lookup.count(fileName) == 0 && lookup[fileName].count(index) == 0) {
-		// not in look up table
-		MyDB_PageHandleBase handleBase = getNewPage(isPinned, false);
-		int pageId = handleBase.getPageId();
-		lookup[fileName][index] = pageId;
-		allPages[pageId].addRef();
-		allPages[pageId].setTableLoc(fileName, index);
 
-		string fileName = whichTable->getStorageLoc();
-		readFromFile(((char*) Buffer) + allPages[pageId].getIndex() * pageSize, index, fileName);
+	if (lookup.find(fileName) != lookup.end()) {
+		unordered_map <long, int> indexes = lookup[fileName];
+		if (indexes.find(index) != indexes.end()) {
+			int pageId = lookup.at(fileName).at(index);
+			allPages[pageId].addRef();
 
-		return make_shared <MyDB_PageHandleBase> (handleBase);
-	} else {
-		int pageId = lookup[fileName][index];
-		allPages[pageId].addRef();
+			return pageId;
+		}
+	}  
+	// not in look up table
+	int pageId = getNewPage(isPinned, false);
+	lookup[fileName][index] = pageId;
+	allPages[pageId].addRef();
+	allPages[pageId].setTableLoc(fileName, index);
 
-		MyDB_PageHandleBase newHandleBase(pageId, this);
-		return make_shared <MyDB_PageHandleBase> (newHandleBase);
-	}
+	readFromFile(((char*) Buffer) + allPages[pageId].getIndex() * pageSize, index, fileName);
+
+	return pageId;
+	
 }
 
 
@@ -111,7 +120,7 @@ int MyDB_BufferManager :: getFree () {
 	void* bufferLoc = ((char*) Buffer) + bufIndex * pageSize;
 
 	// Anon case needs to write to the temp file
-	if (allPages[evictedId].getAnon()) {
+	if (allPages[evictedId].getAnon() == true) {
 		// Write to the temp file at the page's given location
 
 		int tempFileIndex = allPages[evictedId].getTempFileIndex();
@@ -125,15 +134,15 @@ int MyDB_BufferManager :: getFree () {
 			cout << "Failed to write to temp file! \n";
 		}
 		
-	} else if (allPages[evictedId].getDirty() == true){
+	} else if (allPages[evictedId].getDirty() == true) {
 		long offset = allPages[evictedId].getTableIndex();
 		string fileName = allPages[evictedId].getTableFileName();
 		int fd = open(fileName.c_str(), O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
 		if (lseek(fd, offset * pageSize, SEEK_SET) == -1) {
 			cout << "Failed to lseek \n";
 		}
-		if (write(fd, bufferLoc, pageSize) == -1) {
-			cout << "Failed to write \n";
+		if (write(fd, bufferLoc, pageSize) == -1) {			
+			cout << "Failed to write, got file name " << fileName << " and evictedId " << evictedId;
 		}
 		close(fd);
 	}
@@ -231,14 +240,13 @@ void MyDB_BufferManager :: freeHandleBase(int pageId) {
 }
 
 void MyDB_BufferManager :: deletePage(int pageId) {
-	
 	if (allPages[pageId].getAnon() == true) {
 		// Deleting an anonymous page
 
 		// Delete from LRU if inside
 		for (auto iter = LRU.begin(); iter!= LRU.end(); iter++) {
 			if (*iter == pageId) {
-				LRU.erase(iter);
+				iter = LRU.erase(iter);
 				freePages[allPages[pageId].getIndex()] = true;
 				isFull = false;
 				break;
@@ -283,6 +291,8 @@ MyDB_BufferManager :: MyDB_BufferManager (size_t pageSize, size_t numPages, stri
 
 MyDB_BufferManager :: ~MyDB_BufferManager () {
 	close(tempFd);
+	free(freePages);
+	free(Buffer);
 }
 	
 #endif

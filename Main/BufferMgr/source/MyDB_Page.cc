@@ -5,7 +5,6 @@
 #include <iostream>
 
 MyDB_Page :: MyDB_Page() {
-    cout << " ERROR : Tried to call default constructor\n";
 }
 
 MyDB_Page :: MyDB_Page(int index, bool isPinned, bool isAnon, int pageId, int tempFileIndex = -1) : index(index), 
