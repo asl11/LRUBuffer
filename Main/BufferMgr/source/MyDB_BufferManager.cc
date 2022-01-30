@@ -296,6 +296,7 @@ MyDB_BufferManager :: MyDB_BufferManager (size_t pageSize, size_t numPages, stri
 }
 
 MyDB_BufferManager :: ~MyDB_BufferManager () {
+	// simply clean up open resources
 	close(tempFd);
 	free(freePages);
 	free(Buffer);

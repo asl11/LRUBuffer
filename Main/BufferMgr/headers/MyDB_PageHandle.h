@@ -2,7 +2,7 @@
 #ifndef PAGE_HANDLE_H
 #define PAGE_HANDLE_H
 
-class MyDB_BufferManager;
+class MyDB_BufferManager; // forward declaration to avoid circular include
 
 #include <memory>
 
@@ -40,10 +40,10 @@ public:
 
 private:
 
-	// pageID field
+	// internal ID of the referenced page
 	int pageId;
 
-	// Buffer manager to call
+	// Buffer manager to call when this handle goes out of scope
 	MyDB_BufferManager *bufferMan;
 
 };

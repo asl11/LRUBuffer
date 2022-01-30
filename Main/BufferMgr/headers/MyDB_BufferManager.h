@@ -2,6 +2,7 @@
 #ifndef BUFFER_MGR_H
 #define BUFFER_MGR_H
 
+// slightly odd ordering here is meant to avoid circular includes
 class MyDB_PageHandleBase;
 #include <memory>
 typedef std::shared_ptr <MyDB_PageHandleBase> MyDB_PageHandle;
@@ -66,8 +67,13 @@ public:
 
 private:
 
+	// size of all pages in the buffer
 	size_t pageSize;
+
+	// number of pages that can be stored at once by the buffer
 	size_t numPages;
+
+	// path of temp file where anonymous pages will be written when evicted
 	string tempFile;
 
 	// Buffer is the chunk of memory allocated for buffer storage. *Bytes should point an index * pageSize + Buffer 
@@ -86,12 +92,22 @@ private:
 	// in the temp file as free when the associated page is deleted. 
 	list <int> freeTempfileIndex;
 	
+	// pageSize-sized array indicating whether the respective page is currently free
+	// or not in the buffer (true = free, false = occupied)
 	bool *freePages;
+
+	// whether the buffer is currently full (usually true!)
 	bool isFull;
+
+	// monotonically increasing int, used to generate new page IDs whenever
+	// a page is created
 	int pageCount;
+
+	// highest index used up to this point for anonymous pages in the temp file
 	int tempFileIndex;
+
+	// file descriptor for the open temp file
 	int tempFd;
-	
 
 	// Gets the next free page index of the buffer, or evicts one if they're all full
 	int getFree();
@@ -113,8 +129,6 @@ private:
 
 	// Helper method to "kill" pages
 	void deletePage(int pageId);
-
-
 
 };
 
